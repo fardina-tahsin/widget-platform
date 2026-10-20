@@ -1,4 +1,6 @@
 const express = require('express');
+const fs = require('node:fs');
+const path = require('node:path');
 const { z } = require('zod');
 const env = require('../config/env');
 const widgets = require('../db/widgets');
@@ -9,12 +11,14 @@ const { validateBody } = require('../middleware/validate');
 const { createRateLimiter } = require('../middleware/rateLimit');
 const { errors } = require('../lib/errors');
 const { normalizeIp } = require('../lib/ip');
+const { UUID_RE } = require('../lib/uuid');
 const geoService = require('../services/geoService');
 const mailService = require('../services/mailService');
 const { validateSubmissionFields } = require('../lib/submissionValidation');
 
 const router = express.Router();
 const jsonBody = express.json({ limit: `${env.bodyLimitKb}kb` });
+const widgetScript = fs.readFileSync(path.join(__dirname, '..', '..', 'public', 'widget.js'), 'utf8');
 
 const ipLimiter = createRateLimiter({
   windowMs: env.rateLimit.windowMs,
@@ -35,6 +39,38 @@ const submissionSchema = z
     hp: z.string().max(200).optional(),
   })
   .strict();
+
+router.options('/widget.js', publicCors);
+router.get('/widget.js', publicCors, (req, res) => {
+  const immutable = req.query.v === env.widgetScriptVersion;
+  res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+  res.setHeader('Cache-Control', immutable ? 'public, max-age=31536000, immutable' : 'public, max-age=300');
+  res.send(widgetScript);
+});
+
+router.options('/widgets/:id/config', publicCors);
+router.get('/widgets/:id/config', publicCors, async (req, res, next) => {
+  try {
+    if (!UUID_RE.test(req.params.id)) return next(errors.notFound('Widget not found'));
+    const widget = await widgets.getActiveWidget(req.params.id);
+    if (!widget) return next(errors.notFound('Widget not found'));
+    res.setHeader('Cache-Control', 'public, max-age=60');
+    res.json({
+      widget: {
+        id: widget.id,
+        type: widget.type,
+        title: widget.title,
+        description: widget.description,
+        fields: widget.fields,
+        buttonText: widget.buttonText,
+        display: widget.display,
+      },
+      scriptVersion: env.widgetScriptVersion,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
 
 async function loadWidget(req, res, next) {
   try {

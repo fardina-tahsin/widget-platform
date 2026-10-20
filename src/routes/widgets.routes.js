@@ -4,6 +4,7 @@ const widgets = require('../db/widgets');
 const { requireAuth } = require('../middleware/auth');
 const { validateBody } = require('../middleware/validate');
 const { errors } = require('../lib/errors');
+const { UUID_RE } = require('../lib/uuid');
 const { buildSnippet, withSnippet } = require('../services/snippetService');
 
 const router = express.Router();
@@ -73,8 +74,6 @@ const updateSchema = z
   .refine((patch) => Object.keys(patch).length > 0, {
     message: 'at least one field must be provided',
   });
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function requireUuidParam(req, res, next) {
   if (!UUID_RE.test(req.params.id)) return next(errors.notFound('Widget not found'));
