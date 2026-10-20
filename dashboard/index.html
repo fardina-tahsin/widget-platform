@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Widget Platform Dashboard</title>
+    <style>
+      * { box-sizing: border-box; }
+      [hidden] { display: none !important; }
+      body {
+        margin: 0;
+        background: #f8fafc;
+        color: #0f172a;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 16px 24px;
+        background: #0f172a;
+        color: #f8fafc;
+      }
+      header h1 { margin: 0; font-size: 18px; }
+      header form { display: flex; gap: 8px; }
+      input, button { font: inherit; }
+      #email, #password {
+        width: 200px;
+        padding: 6px 10px;
+        border: 1px solid #334155;
+        border-radius: 6px;
+        background: #1e293b;
+        color: #f8fafc;
+      }
+      header button {
+        padding: 6px 12px;
+        border: 0;
+        border-radius: 6px;
+        background: #38bdf8;
+        color: #0f172a;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+      #message { margin: 0 0 16px; color: #b91c1c; }
+      .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+      .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; }
+      .card span { display: block; font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
+      .card strong { font-size: 28px; }
+      section { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 16px; margin-bottom: 24px; }
+      section h2 { margin: 0 0 12px; font-size: 15px; }
+      ul { margin: 0; padding-left: 18px; }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; }
+      th, td { text-align: left; padding: 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+      th { color: #64748b; font-weight: 600; }
+      code { font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Widget Platform</h1>
+      <form id="auth">
+        <input id="email" type="email" placeholder="Email" autocomplete="username" value="demo@example.com">
+        <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+        <button type="submit">Log in</button>
+      </form>
+      <div id="session" hidden>
+        <span id="session-email"></span>
+        <button id="logout" type="button">Log out</button>
+      </div>
+    </header>
+    <main>
+      <p id="message">Demo login: demo@example.com / demo-password-123</p>
+      <div class="cards">
+        <div class="card"><span>Submissions</span><strong id="total-submissions">—</strong></div>
+        <div class="card"><span>Widgets</span><strong id="total-widgets">—</strong></div>
+      </div>
+      <section>
+        <h2>Per widget</h2>
+        <ul id="per-widget"><li>No data</li></ul>
+      </section>
+      <section>
+        <h2>Geography</h2>
+        <ul id="geo"><li>No data</li></ul>
+      </section>
+      <section>
+        <h2>Recent submissions</h2>
+        <table>
+          <thead>
+            <tr><th>When</th><th>Widget</th><th>Payload</th><th>Geo</th><th>Spam</th></tr>
+          </thead>
+          <tbody id="submissions"><tr><td colspan="5">No data</td></tr></tbody>
+        </table>
+      </section>
+    </main>
+    <script>
+      (function () {
+        var authForm = document.getElementById('auth');
+        var emailInput = document.getElementById('email');
+        var passwordInput = document.getElementById('password');
+        var sessionBox = document.getElementById('session');
+        var sessionEmail = document.getElementById('session-email');
+        var message = document.getElementById('message');
+        var stored = sessionStorage.getItem('wp_token');
+        if (stored) {
+          setSession(sessionStorage.getItem('wp_email'));
+          load(stored);
+        }
+
+        document.getElementById('logout').addEventListener('click', function () {
+          sessionStorage.removeItem('wp_token');
+          sessionStorage.removeItem('wp_email');
+          location.reload();
+        });
+
+        function setSession(email) {
+          authForm.hidden = true;
+          sessionBox.hidden = false;
+          sessionEmail.textContent = email || 'Signed in';
+        }
+
+        function clearSession() {
+          authForm.hidden = false;
+          sessionBox.hidden = true;
+        }
+
+        document.getElementById('auth').addEventListener('submit', function (event) {
+          event.preventDefault();
+          var email = emailInput.value.trim();
+          var password = passwordInput.value;
+          if (!email || !password) {
+            showMessage('Enter your email and password.', true);
+            return;
+          }
+          showMessage('Logging in...', false);
+          fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ email: email, password: password }),
+          }).then(function (response) {
+            return response.json().catch(function () { return {}; }).then(function (body) {
+              return { ok: response.ok, body: body };
+            });
+          }).then(function (result) {
+            if (!result.ok) {
+              throw new Error((result.body.error && result.body.error.message) || 'Login failed.');
+            }
+            passwordInput.value = '';
+            sessionStorage.setItem('wp_token', result.body.token);
+            sessionStorage.setItem('wp_email', result.body.user.email);
+            setSession(result.body.user.email);
+            load(result.body.token);
+          }).catch(function (err) {
+            showMessage(err.message, true);
+          });
+        });
+
+        function showMessage(text, isError) {
+          message.textContent = text;
+          message.style.color = isError ? '#b91c1c' : '#64748b';
+        }
+
+        function load(token) {
+          showMessage('Loading...', false);
+          var headers = { authorization: 'Bearer ' + token };
+          Promise.all([
+            fetch('/api/stats/overview', { headers: headers }),
+            fetch('/api/submissions?limit=20', { headers: headers }),
+          ]).then(function (responses) {
+            if (responses.some(function (response) { return !response.ok; })) {
+              throw new Error('Could not load data. Log in again.');
+            }
+            return Promise.all(responses.map(function (response) { return response.json(); }));
+          }).then(function (results) {
+            renderStats(results[0]);
+            renderSubmissions(results[1].data, results[1].meta);
+          }).catch(function (err) {
+            sessionStorage.removeItem('wp_token');
+            sessionStorage.removeItem('wp_email');
+            clearSession();
+            showMessage(err.message, true);
+          });
+        }
+
+        function renderStats(stats) {
+          document.getElementById('total-submissions').textContent = stats.totals.submissions;
+          document.getElementById('total-widgets').textContent = stats.totals.widgets;
+          renderList('per-widget', stats.perWidget.map(function (item) {
+            return item.title + ' — ' + item.count;
+          }));
+          renderList('geo', stats.geo.map(function (item) {
+            return item.country + ' — ' + item.count;
+          }));
+        }
+
+        function renderSubmissions(rows, meta) {
+          var target = document.getElementById('submissions');
+          target.innerHTML = '';
+          if (!rows.length) {
+            var empty = document.createElement('tr');
+            var cell = document.createElement('td');
+            cell.colSpan = 5;
+            cell.textContent = 'No submissions';
+            empty.appendChild(cell);
+            target.appendChild(empty);
+            return;
+          }
+          rows.forEach(function (row) {
+            var tr = document.createElement('tr');
+            appendCell(tr, new Date(row.createdAt).toLocaleString());
+            appendCell(tr, row.widgetId.slice(0, 8));
+            appendCell(tr, JSON.stringify(row.payload));
+            appendCell(tr, row.geo ? (row.geo.country || '—') + ' / ' + (row.geo.city || '—') : '—');
+            appendCell(tr, row.isSpam ? 'yes' : 'no');
+            target.appendChild(tr);
+          });
+          showMessage(rows.length + ' of ' + meta.total + ' shown', false);
+        }
+
+        function appendCell(tr, value) {
+          var td = document.createElement('td');
+          td.textContent = value;
+          tr.appendChild(td);
+        }
+
+        function renderList(id, items) {
+          var target = document.getElementById(id);
+          target.innerHTML = '';
+          if (!items.length) {
+            var empty = document.createElement('li');
+            empty.textContent = 'No data';
+            target.appendChild(empty);
+            return;
+          }
+          items.forEach(function (item) {
+            var li = document.createElement('li');
+            li.textContent = item;
+            target.appendChild(li);
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>

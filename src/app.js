@@ -1,3 +1,4 @@
+const path = require('node:path');
 const express = require('express');
 const authRoutes = require('./routes/auth.routes');
 const widgetRoutes = require('./routes/widgets.routes');
@@ -22,6 +23,8 @@ function createApp() {
   app.use('/api/auth', express.json({ limit: '100kb' }), authRoutes);
   app.use('/api/widgets', express.json({ limit: '100kb' }), widgetRoutes);
   app.use('/api', express.json({ limit: '100kb' }), dashboardRoutes);
+
+  app.use('/dashboard', express.static(path.join(__dirname, '..', 'dashboard')));
 
   app.use(notFoundHandler);
   app.use(errorHandler);
