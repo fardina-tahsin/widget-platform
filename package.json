@@ -1,0 +1,26 @@
+{
+  "name": "widget-platform",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Embeddable widget platform with a hardened public submission API",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "smoke": "node scripts/smoke.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^6.9.16",
+    "pg": "^8.13.1",
+    "zod": "^3.24.1"
+  }
+}
