@@ -44,7 +44,7 @@ Errors: `{ error: { code, message, details? } }`. A foreign tenant's row → `40
 | Admin POST `/api/widgets` | `{type,title,description?,fields?,buttonText?,display?}` | 201 `{widget,snippet}` | 400,401 |
 | Admin GET `/api/widgets` · `/:id`; PATCH/DELETE `/:id` | mutable fields | 200 `{widget(s),snippet}` / 204 | 400,401,404 |
 | Admin GET `/api/submissions`; GET `/api/stats/overview` | `widgetId?,from?,to?,includeSpam?,page?,limit?` / `from?,to?` | 200 `{data,meta}` / `{totals,perWidget,overTime,geo}` | 400,401 |
-| **Public** GET `/widget.js?id&v` | — | 200 JS, `max-age=31536000, immutable` | 404 |
+| **Public** GET `/widget.js?id&v` | — | 200 JS; immutable when `v` is current, else `max-age=300` | — |
 | Public GET `/widgets/:id/config` | — | 200 `{widget,scriptVersion}`, `max-age=60` | 404 unknown/paused |
 | Public POST `/submissions` | `{widgetId,fields,hp}` | 201 `{ok,submissionId}` | 400,404,413,429,500 |
 
@@ -55,9 +55,9 @@ Submissions pipeline: 16 KB limit → per-IP limit → shape check → widget lo
 ```
 src/  server.js, app.js, config/env.js
       db/ pool, schema.sql, queries · middleware/ auth, cors, rateLimit, validate, errorHandler(last)
-      routes/ auth, widgets, dashboard, public · services/ snippet, submission, geo, mail
-      lib/ errors, honeypot
-public/widget.js · customer-site/ (:5500) · docker-compose.yml (postgres:16)
+      routes/ auth, widgets, dashboard, public · services/ snippet, geo, mail
+      lib/ errors, ip, dates, uuid, submissionValidation
+public/widget.js · dashboard/ · customer-site/ (:5500) · docker-compose.yml (postgres:16)
 ```
 
 Order: `cors → json(16KB) → ipLimit → route`, then `shape → lookup → widgetLimit → validation → honeypot → handler`. `geoService` A → B → `null`, never throws; `mailService` runs post-commit, unawaited, logs failures; only DB failure reaches 500.

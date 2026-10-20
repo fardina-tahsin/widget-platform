@@ -33,9 +33,40 @@ Command: `node scripts/smoke.js`
 PASS snippet generated (<script src="http://localhost:3000/widget.js?id=cd0bf485-d7b5-4cea-acc5-e29e3477078b&v=v1" async></script>)
 ```
 
-- [ ] Public config endpoint with correct cache headers.
-- [ ] Widget JS served as a versioned bundle.
-- [ ] Widget renders on a page from a different origin than the API.
+- [x] Public config endpoint with correct cache headers.
+
+Command: `curl.exe -si -H "Origin: http://localhost:5500" "http://localhost:3000/widgets/11111111-1111-4111-8111-111111111111/config"`
+```
+HTTP/1.1 200 OK
+Access-Control-Allow-Origin: *
+Cache-Control: public, max-age=60
+{"widget":{"id":"11111111-1111-4111-8111-111111111111","title":"Weekly newsletter", ...},"scriptVersion":"v1"}
+```
+A paused widget on the same path returns `404 {"error":{"code":"NOT_FOUND"}}`.
+
+- [x] Widget JS served as a versioned bundle.
+
+Command: `curl.exe -si "http://localhost:3000/widget.js?id=11111111-1111-4111-8111-111111111111&v=v1"`
+```
+HTTP/1.1 200 OK
+Content-Type: application/javascript; charset=utf-8
+Cache-Control: public, max-age=31536000, immutable
+```
+Requesting without `v` (or with an old `v`) serves the current bundle with `Cache-Control: public, max-age=300`.
+
+- [x] Widget renders on a page from a different origin than the API.
+
+Command: `npm run customer-site`, then headless Chrome from the API origin:
+`chrome --headless=new --virtual-time-budget=8000 --dump-dom http://localhost:5500/`
+```
+<section class="wp-widget" data-widget-platform="11111111-1111-4111-8111-111111111111">
+  <h2>Weekly newsletter</h2>
+  <input type="text" ... name="name" required maxlength="80">
+  <input type="email" ... name="email" required maxlength="120">
+  <button type="submit">Subscribe</button>
+</section>
+```
+The page is served from `http://localhost:5500`; the widget fetches config and submits to `http://localhost:3000` (see CORS proof above).
 
 ## Public submission API
 
@@ -72,6 +103,18 @@ Command: cross-origin curl, then `docker exec widget_platform-db-1 psql -U widge
 payload | {"name": "CurlProof", "email": "curl@example.com"}
 geo     | {"lat":1.23, ..., "provider":"mock-b"}
 is_spam | f
+```
+
+## Dashboard
+
+- [x] Submission list and stats endpoints are tenant-scoped and return aggregates; the bare page is served at `/dashboard/`.
+
+Command: `node scripts/smoke.js`
+```
+PASS submissions listed for owner (rows 2)
+PASS stats overview totals ({"submissions":1,"widgets":1})
+PASS stats per-widget counts ([{"widgetId":"d9b80646-...","title":"Newsletter 2","count":1}])
+PASS stats geo breakdown ([{"country":"Testland","count":1}])
 ```
 
 ## Abuse protection
@@ -118,5 +161,20 @@ Command: `Get-Content server.log -Tail 1; Get-Content server.err.log -Tail 1`
 POST /submissions 201 8.3ms
 email side effect failed: connect ECONNREFUSED 127.0.0.1:1025
 ```
+Reproduce with `docker compose stop mailpit`.
 
+## Documentation
+
+- [x] README covers the system, architecture, setup, seed, API and limitations; the manifest, AI log, env template, design doc and license are present.
+
+Command: `Get-ChildItem README.md,capstone.yaml,EVIDENCE.md,BUILDLOG.md,.env.example,LICENSE,docs/DESIGN.md | Select-Object -ExpandProperty Name`
+```
+README.md
+capstone.yaml
+EVIDENCE.md
+BUILDLOG.md
+.env.example
+LICENSE
+DESIGN.md
+```
 
