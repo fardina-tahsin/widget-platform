@@ -1,6 +1,6 @@
 # Widget Platform — Design
 
-Node.js track · Phase 1 
+Phase 1 
 
 **Problem.** Any website installs a lead-capture widget (signup, contact, CTA popover) with one line — `<script src="http://localhost:3000/widget.js?id=<id>&v=<version>">` — so our API receives untrusted traffic from origins we do not control. The build is mostly hardening: cached public delivery, boundary validation, abuse resistance, graceful degradation, tenant isolation.
 
@@ -48,7 +48,7 @@ Errors: `{ error: { code, message, details? } }`. A foreign tenant's row → `40
 | Public GET `/widgets/:id/config` | — | 200 `{widget,scriptVersion}`, `max-age=60` | 404 unknown/paused |
 | Public POST `/submissions` | `{widgetId,fields,hp}` | 201 `{ok,submissionId}` | 400,404,413,429,500 |
 
-Submissions pipeline: 16 KB limit → shape check → widget lookup → per-IP limit → per-widget limit → field validation (unknown keys rejected) → honeypot → geo → insert → email. Bad input is always 4xx; 429 sends `Retry-After`; honeypot hits are stored `is_spam=true` but answered `201`.
+Submissions pipeline: 16 KB limit → per-IP limit → shape check → widget lookup → per-widget limit → field validation (unknown keys rejected) → honeypot → geo → insert → email. Bad input is always 4xx; 429 sends `Retry-After`; honeypot hits are stored `is_spam=true` but answered `201`.
 
 ## Layer sketch
 

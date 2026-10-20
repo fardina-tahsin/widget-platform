@@ -1,6 +1,6 @@
 # Widget Platform
 
-Embeddable lead-capture widgets — signup forms, contact forms, CTA popovers — installed on any website with one `<script>` tag. Submissions are validated, rate-limited, spam-checked, geo-enriched with a fallback chain, stored, and exposed to the owner through a dashboard API.
+Embeddable lead-capture widgets - signup forms, contact forms, CTA popovers - installed on any website with one `<script>` tag. Submissions are validated, rate-limited, spam-checked, geo-enriched with a fallback chain, stored, and exposed to the owner through a dashboard API.
 
 ## Architecture
 
@@ -36,10 +36,8 @@ Embeddable lead-capture widgets — signup forms, contact forms, CTA popovers �
 
 ## Setup
 
-Nothing runs yet (Phase 1). Phase 2:
-
 ```bash
-docker compose up -d        # PostgreSQL 16
+docker compose up -d        # PostgreSQL 16 + Mailpit
 npm install
 cp .env.example .env        # fill in values; never commit .env
 npm run dev
